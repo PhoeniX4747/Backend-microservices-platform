@@ -1,3 +1,0 @@
-# Backend-microservices-platform
-
-okokokokok
