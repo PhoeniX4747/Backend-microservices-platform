@@ -74,9 +74,3 @@ Auth-specific:
 
 Order/Inventory:
 - `JWT_PUBLIC_KEY_LOCATION` (defaults to `classpath:public.pem`)
-
-## Future improvements
-- Add migration tooling (Flyway/Liquibase)
-- Add integration tests with Testcontainers
-- Add token revocation cache strategy
-- Add metrics and tracing stack
