@@ -8,6 +8,7 @@ import com.example.auth.repository.RefreshTokenRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.security.JwtProperties;
 import com.example.auth.security.JwtProvider;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -21,6 +22,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
@@ -31,20 +33,6 @@ public class AuthService {
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
     private final RedisTemplate<String, String> redisTemplate;
-
-    public AuthService(UserRepository userRepository,
-                       RefreshTokenRepository refreshTokenRepository,
-                       PasswordEncoder passwordEncoder,
-                       JwtProvider jwtProvider,
-                       JwtProperties jwtProperties,
-                       RedisTemplate<String, String> redisTemplate) {
-        this.userRepository = userRepository;
-        this.refreshTokenRepository = refreshTokenRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.jwtProvider = jwtProvider;
-        this.jwtProperties = jwtProperties;
-        this.redisTemplate = redisTemplate;
-    }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
