@@ -1,14 +1,22 @@
 package com.example.order.service;
 
+import com.example.order.dto.CreateOrderRequest;
 import com.example.order.dto.OrderResponse;
+import com.example.order.dto.ReserveStockRequest;
 import com.example.order.exception.ApiException;
 import com.example.order.model.OrderEntity;
 import com.example.order.model.OrderStatus;
 import com.example.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,14 +26,40 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final RestTemplate restTemplate;
+
+    @Value("${inventory.service.url}")
+    private String inventoryServiceUrl;
 
     @Transactional
-    public OrderResponse createOrder(Jwt jwt) {
+    public OrderResponse createOrder(Jwt jwt, CreateOrderRequest request) {
         OrderEntity order = new OrderEntity();
         order.setUserId(UUID.fromString(jwt.getSubject()));
+        order.setProductId(request.productId());
+        order.setQuantity(request.quantity());
         order.setStatus(OrderStatus.CREATED);
-        OrderEntity saved = orderRepository.save(order);
-        return map(saved);
+        OrderEntity savedOrder = orderRepository.save(order);
+
+        try {
+            ReserveStockRequest reserveRequest = new ReserveStockRequest(savedOrder.getProductId(), savedOrder.getQuantity());
+            ResponseEntity<Void> response = restTemplate.exchange(
+                    inventoryServiceUrl + "/api/v1/inventory/reserve",
+                    HttpMethod.POST,
+                    new HttpEntity<>(reserveRequest),
+                    Void.class
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RestClientException("Inventory reservation request failed");
+            }
+
+            savedOrder.setStatus(OrderStatus.CONFIRMED);
+            return map(orderRepository.save(savedOrder));
+        } catch (RestClientException ex) {
+            savedOrder.setStatus(OrderStatus.CANCELLED);
+            orderRepository.save(savedOrder);
+            throw new ApiException("Order cancelled: unable to reserve inventory");
+        }
     }
 
     public List<OrderResponse> getOrders(Jwt jwt) {
@@ -45,6 +79,13 @@ public class OrderService {
     }
 
     private OrderResponse map(OrderEntity entity) {
-        return new OrderResponse(entity.getId(), entity.getUserId().toString(), entity.getStatus(), entity.getCreatedAt());
+        return new OrderResponse(
+                entity.getId(),
+                entity.getUserId().toString(),
+                entity.getProductId(),
+                entity.getQuantity(),
+                entity.getStatus(),
+                entity.getCreatedAt()
+        );
     }
 }
