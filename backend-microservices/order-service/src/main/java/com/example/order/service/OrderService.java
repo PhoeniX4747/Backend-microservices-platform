@@ -1,5 +1,6 @@
 package com.example.order.service;
 
+import com.example.order.client.InventoryFeignClient;
 import com.example.order.dto.CreateOrderRequest;
 import com.example.order.dto.OrderResponse;
 import com.example.order.dto.ReleaseStockRequest;
@@ -8,16 +9,11 @@ import com.example.order.exception.ApiException;
 import com.example.order.model.OrderEntity;
 import com.example.order.model.OrderStatus;
 import com.example.order.repository.OrderRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,10 +23,7 @@ import java.util.UUID;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final RestTemplate restTemplate;
-
-    @Value("${inventory.service.url}")
-    private String inventoryServiceUrl;
+    private final InventoryFeignClient inventoryFeignClient;
 
     @Transactional
     public OrderResponse createOrder(Jwt jwt, CreateOrderRequest request) {
@@ -43,20 +36,11 @@ public class OrderService {
 
         try {
             ReserveStockRequest reserveRequest = new ReserveStockRequest(savedOrder.getProductId(), savedOrder.getQuantity());
-            ResponseEntity<Void> response = restTemplate.exchange(
-                    inventoryServiceUrl + "/api/v1/inventory/reserve",
-                    HttpMethod.POST,
-                    new HttpEntity<>(reserveRequest),
-                    Void.class
-            );
-
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RestClientException("Inventory reservation request failed");
-            }
+            inventoryFeignClient.reserve(reserveRequest);
 
             savedOrder.setStatus(OrderStatus.CONFIRMED);
             return map(orderRepository.save(savedOrder));
-        } catch (RestClientException ex) {
+        } catch (FeignException ex) {
             savedOrder.setStatus(OrderStatus.CANCELLED);
             orderRepository.save(savedOrder);
             throw new ApiException("Order cancelled: unable to reserve inventory");
@@ -83,13 +67,8 @@ public class OrderService {
         if (OrderStatus.CONFIRMED.equals(order.getStatus())) {
             try {
                 ReleaseStockRequest releaseRequest = new ReleaseStockRequest(order.getProductId(), order.getQuantity());
-                restTemplate.exchange(
-                        inventoryServiceUrl + "/api/v1/inventory/release",
-                        HttpMethod.POST,
-                        new HttpEntity<>(releaseRequest),
-                        Void.class
-                );
-            } catch (RestClientException ex) {
+                inventoryFeignClient.release(releaseRequest);
+            } catch (FeignException ex) {
                 throw new ApiException("Unable to release reserved inventory for cancelled order");
             }
         }
