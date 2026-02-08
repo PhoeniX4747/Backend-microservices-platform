@@ -44,6 +44,15 @@ Swagger UI endpoints:
 - Order: `http://localhost:8082/swagger-ui/index.html`
 - Inventory: `http://localhost:8083/swagger-ui/index.html`
 
+## API cURL examples
+Use the refactored API command collection in `api-curls.txt` for all endpoints across auth, order, and inventory services.
+
+Notes:
+- Inventory `reserve` and `release` endpoints require an authenticated bearer token.
+- Inventory `update` and order `cancel` require an ADMIN bearer token.
+- Order `create` request body is `{ "productId": <long>, "quantity": <int> }` and response includes `id`, `userId`, `productId`, `quantity`, `status`, `createdAt`.
+- The examples assume `jq` is installed for token extraction.
+
 ## CI/CD
 GitHub Actions workflow (`.github/workflows/ci-cd.yml`) runs on pushes to `main` and performs:
 1. Java 17 setup
