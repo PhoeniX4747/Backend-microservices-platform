@@ -50,6 +50,7 @@ Use the refactored API command collection in `api-curls.txt` for all endpoints a
 Notes:
 - Inventory `reserve` and `release` endpoints require an authenticated bearer token.
 - Inventory `update` and order `cancel` require an ADMIN bearer token.
+- Order `create` request body is `{ "productId": <long>, "quantity": <int> }` and response includes `id`, `userId`, `productId`, `quantity`, `status`, `createdAt`.
 - The examples assume `jq` is installed for token extraction.
 
 ## CI/CD

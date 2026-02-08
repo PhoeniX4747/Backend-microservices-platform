@@ -68,12 +68,14 @@ ADMIN_ACCESS_TOKEN=$(echo "$ADMIN_LOGIN_RESPONSE" | jq -r '.accessToken')
 ############################
 
 # 2.1 Create order (USER or ADMIN token required)
+# Request body must match CreateOrderRequest: { productId, quantity }
 CREATE_ORDER_RESPONSE=$(curl -s -X POST "$BASE_ORDER_URL/api/v1/orders" \
   -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"description":"Order for 2 keyboards"}')
+  -d '{"productId":1,"quantity":2}')
 
 echo "$CREATE_ORDER_RESPONSE"
+# OrderResponse: { id, userId, productId, quantity, status, createdAt }
 ORDER_ID=$(echo "$CREATE_ORDER_RESPONSE" | jq -r '.id')
 
 # 2.2 Get orders (USER or ADMIN token required)
